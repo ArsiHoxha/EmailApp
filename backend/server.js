@@ -655,6 +655,25 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+  app.post('/api/workspaces/delete', isLoggedIn, async (req, res) => {
+    const { workspaceId } = req.body; // Expecting workspaceId in the request body
+
+    try {
+      const workspaceIndex = req.user.workspaces.findIndex(ws => ws.name.toString() === workspaceId);
+      
+      if (workspaceIndex === -1) {
+        return res.status(404).json({ message: 'Workspace not found' });
+      }
+
+      req.user.workspaces.splice(workspaceIndex, 1);
+      await req.user.save();
+
+      res.json({ message: 'Workspace deleted successfully' });
+    } catch (err) {
+      console.error('Failed to delete workspace:', err);
+      res.status(500).json({ message: 'Failed to delete workspace' });
+    }
+  });
 
 
 app.listen(8080, () => {

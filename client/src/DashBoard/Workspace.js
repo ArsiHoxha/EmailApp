@@ -10,11 +10,11 @@ export default function Workspace() {
   const [selectedImage, setSelectedImage] = useState('');
   const [error, setError] = useState('');
   const [workspaces, setWorkspaces] = useState([]);
-
+  
   // Predefined images to choose from
   const images = [
     "https://images.unsplash.com/photo-1444580442178-56153ed65706?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-1.jpg",
+    "https://plus.unsplash.com/premium_photo-1661964177687-57387c2cbd14?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-2.jpg",
     "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-3.jpg",
     "https://flowbite.s3.amazonaws.com/docs/gallery/square/image-4.jpg",
@@ -30,6 +30,7 @@ export default function Workspace() {
         const response = await axios.get('http://localhost:8080/api/workspaces', { withCredentials: true });
         setWorkspaces(response.data);
       } catch (err) {
+        navigate('/')
         console.error('Failed to load workspaces:', err);
         setError('Failed to load workspaces. Please try again later.');
       }
@@ -81,13 +82,24 @@ export default function Workspace() {
 
   const handleDeleteWorkspace = async (workspaceId) => {
     try {
-      await axios.delete(`http://localhost:8080/api/workspaces/${workspaceId}`, { withCredentials: true });
-      setWorkspaces(workspaces.filter(workspace => workspace._id !== workspaceId)); // Remove workspace from list
-    } catch (err) {
-      console.error('Failed to delete workspace:', err);
-    }
-  };
+      const response = await axios.post('http://localhost:8080/api/workspaces/delete', {
+        workspaceId,
+      },{withCredentials:true});
+  
+      alert(response.data.message); // "Workspace deleted successfully"
 
+      // Refresh the page
+      window.location.reload();
+      } catch (error) {
+      if (error.response) {
+        console.error('Error:', error.response.data.message); // Handle server response errors
+      } else {
+        console.error('Error:', error.message); // Handle network or other errors
+      }
+    }
+  
+  };
+  
   return (
     <div className="flex flex-col items-center">
       <div className="text-center font-black text-3xl p-5">Workspaces</div>
@@ -123,7 +135,7 @@ export default function Workspace() {
                 size={24}
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent the click from triggering the workspace click
-                  handleDeleteWorkspace(workspace._id);
+                  handleDeleteWorkspace(workspace.name);
                 }}
               />
             </div>
