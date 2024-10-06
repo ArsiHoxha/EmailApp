@@ -101,7 +101,7 @@ export default function Workspace() {
   };
   
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center h-screen ">
       <div className="text-center font-black text-3xl p-5">Workspaces</div>
       <div className="text-center pb-10">Effortlessly manage your projects and emails in a personalized space designed to keep you organized and focused 🔥🔥🔥</div>
 

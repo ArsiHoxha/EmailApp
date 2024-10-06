@@ -10,7 +10,6 @@ import Footer from './components/Foters'
 export default function Home() {
   return (
     <div>
-      <Navbar></Navbar>
       <DarkHome></DarkHome>
       <FeaturesSection></FeaturesSection>
       <HowItWorks></HowItWorks>
