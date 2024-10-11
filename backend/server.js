@@ -5,6 +5,13 @@ const GoogleStrategy = require('passport-google-oauth2').Strategy;
 const mongoose = require('mongoose');
 const { google } = require('googleapis');
 const User = require('./schemas/UserAuth');
+const Groq = require('groq-sdk');
+  
+// Initialize Groq and Express app
+const groq = new Groq({
+  apiKey: "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" // Access the API key from environment variables
+});
+
 
 require('dotenv').config();
 
@@ -674,7 +681,46 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
       res.status(500).json({ message: 'Failed to delete workspace' });
     }
   });
-
+  // Define an API route to handle the Groq SDK
+  app.post('/api/extract-main-clause', async (req, res) => {
+    try {
+      const { text } = req.body; // Get text from the request body
+      console.log(text);
+  
+      // Request to extract the main clause from the text
+      const chatCompletion = await groq.chat.completions.create({
+        "messages": [
+          {
+            "role": "user",
+            "content": `extract the main points from this text:\n\n${text}`
+          }
+        ],
+        "model": "gemma-7b-it", // Use the appropriate model
+        "temperature": 1,
+        "max_tokens": 1024,
+        "top_p": 1,
+        "stream": false, // Set to false for a one-time response
+        "stop": null
+      });
+  
+      // Assuming chatCompletion is not an async iterable, access it directly
+      const mainClauseContent = chatCompletion.choices[0]?.message.content || '';
+  
+      // Send the extracted main clause back to the client
+      res.status(200).json({ mainClause: mainClauseContent });
+  
+    } catch (error) {
+      console.error("Error extracting main clause:", error);
+      res.status(500).json({ error: 'Failed to extract main clause' });
+    }
+  });
+      
+  // Start the server
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+  
 
 app.listen(8080, () => {
   console.log('Server started on http://localhost:8080');

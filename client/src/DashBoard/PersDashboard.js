@@ -4,12 +4,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEllipsisV } from '@fortawesome/free-solid-svg-icons';
 import NavbarDashboard from './NavbarDash';
+
 export default function PersDashboard() {
   const { name } = useParams();
   const [workspace, setWorkspace] = useState(null);
   const [newListName, setNewListName] = useState('');
   const [error, setError] = useState('');
   const [selectedEmail, setSelectedEmail] = useState(null);
+  const [mainClause, setMainClause] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -68,6 +70,7 @@ export default function PersDashboard() {
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedEmail(null);
+    setMainClause(''); // Reset main clause when closing the modal
   };
 
   const getGmailUrl = (emailId) => {
@@ -75,17 +78,32 @@ export default function PersDashboard() {
   };
 
   const handleFilterClick = (listName) => {
-    // Implement filtering logic here
     console.log(`Filter clicked for list: ${listName}`);
+  };
+
+  const handleExtractMainClause = async () => {
+    if (!selectedEmail) return; // Ensure selected email exists
+
+    try {
+      const response = await axios.post(
+        'http://localhost:8080/api/extract-main-clause',
+        { text: selectedEmail.body }, // Sending email body to backend
+        { withCredentials: true }
+      );
+
+      setMainClause(response.data.mainClause); // Set the extracted main clause
+    } catch (error) {
+      console.error('Error extracting main clause:', error);
+      setMainClause('Failed to extract main clause');
+    }
   };
 
   return (
     <div>
-      <NavbarDashboard></NavbarDashboard>
+      <NavbarDashboard />
 
       <div
         className="p-8 min-h-screen"
-
         style={{
           backgroundImage: workspace ? `url(${workspace.imageUrl})` : 'none',
           backgroundSize: 'cover',
@@ -185,6 +203,20 @@ export default function PersDashboard() {
                   >
                     Open in Gmail
                   </a>
+
+                  <button
+                    onClick={handleExtractMainClause} // Add button for extracting main clause
+                    className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 mt-4"
+                  >
+                    Extract Main Clause
+                  </button>
+
+                  {mainClause && (
+                    <div className="mt-4">
+                      <h3 className="text-lg font-semibold">Extracted Main Clause:</h3>
+                      <p className="text-gray-600">{mainClause}</p>
+                    </div>
+                  )}
 
                   <button
                     onClick={closeModal}

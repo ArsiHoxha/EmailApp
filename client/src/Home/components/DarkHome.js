@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogPanel } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import HomeImage from './images/home.png';
-import WorkspaceImage from './images/workspace.png';
 
 const navigation = [
   { name: 'Product', href: '#' },
