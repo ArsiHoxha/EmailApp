@@ -6,7 +6,10 @@ const mongoose = require('mongoose');
 const { google } = require('googleapis');
 const User = require('./schemas/UserAuth');
 const Groq = require('groq-sdk');
-  
+const Stripe = require('stripe')
+
+const stripe = new Stripe('sk_test_51P5BIpHmq9JrEjv2ZnMyaETBg2jRxszVrDrIk9LGR6mGAN9eVy5I8bf4yczRqlGqROP0tpQKhr97XDevCmef8P4T00pBJii5Yh') // Replace with your real secret key
+
 // Initialize Groq and Express app
 const groq = new Groq({
   apiKey: "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" // Access the API key from environment variables
@@ -692,7 +695,8 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
         "messages": [
           {
             "role": "user",
-            "content": `extract the main points from this text:\n\n${text}`
+            "content": `extract the main points k
+            from this text:\n\n${text}`
           }
         ],
         "model": "gemma-7b-it", // Use the appropriate model
@@ -720,6 +724,31 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });
+  
+
+  app.post('/create-checkout-session', async (req, res) => {
+    const { priceId } = req.body
+  
+    try {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: 'http://localhost:3000/success',
+        cancel_url: 'http://localhost:3000/cancel',
+      })
+  
+      res.json({ id: session.id })
+    } catch (error) {
+      console.error('Error creating checkout session:', error)
+      res.status(500).json({ error: error.message })
+    }
+  })
   
 
 app.listen(8080, () => {
