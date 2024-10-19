@@ -7,6 +7,7 @@ const { google } = require('googleapis');
 const User = require('./schemas/UserAuth');
 const Groq = require('groq-sdk');
 const Stripe = require('stripe')
+const bodyParser = require('body-parser');
 
 const stripe = new Stripe('sk_test_51P5BIpHmq9JrEjv2ZnMyaETBg2jRxszVrDrIk9LGR6mGAN9eVy5I8bf4yczRqlGqROP0tpQKhr97XDevCmef8P4T00pBJii5Yh') // Replace with your real secret key
 
@@ -14,7 +15,7 @@ const stripe = new Stripe('sk_test_51P5BIpHmq9JrEjv2ZnMyaETBg2jRxszVrDrIk9LGR6mG
 const groq = new Groq({
   apiKey: "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" // Access the API key from environment variables
 });
-
+const endpointSecret = 'whsec_7f51cfb96964fd464a9b30531024ebc2b54262225188417d0c202968ed54a2f6';
 
 require('dotenv').config();
 
@@ -33,6 +34,10 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use(bodyParser.json()); // For regular API requests
+app.use(bodyParser.urlencoded({ extended: true })); // For form submissions
+
 const cors = require('cors');
 app.use(express.json()); // Make sure this line is present before defining any routes
 
@@ -720,15 +725,11 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
   });
       
   // Start the server
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
   
 
-  app.post('/create-checkout-session', async (req, res) => {
-    const { priceId } = req.body
-  
+  app.post('/create-checkout-session',isLoggedIn, async (req, res) => {
+    const { priceId, type } = req.body; // Receive userId and subscription type from frontend
+    const userId = req.user._id.toString();
     try {
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
@@ -741,15 +742,72 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
         mode: 'subscription',
         success_url: 'http://localhost:3000/success',
         cancel_url: 'http://localhost:3000/cancel',
-      })
+        metadata: { userId, type }, // Pass userId and type as metadata
+      });
   
-      res.json({ id: session.id })
+      res.json({ id: session.id });
     } catch (error) {
-      console.error('Error creating checkout session:', error)
-      res.status(500).json({ error: error.message })
+      console.error('Error creating checkout session:', error);
+      res.status(500).json({ error: error.message });
     }
-  })
+  });
+    
+  app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
   
+    // Log the raw body for debugging
+    console.log('Raw body:', req.body.toString()); // This should now print the actual raw JSON string
+  
+    let event;
+    try {
+      // Construct the event from the raw body
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret); // Replace with your actual endpoint secret
+    } catch (err) {
+      console.error('Webhook signature verification failed:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  
+    // Handle the event type
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const { userId, type } = session.metadata;
+  
+      try {
+        const user = await User.findById(userId);
+        if (!user) {
+          console.log('User not found');
+          return res.status(404).send('User not found');
+        }
+  
+        // Calculate the subscription end date
+        const endDate = new Date();
+        if (type === 'monthly') {
+          endDate.setMonth(endDate.getMonth() + 1);
+        } else if (type === 'yearly') {
+          endDate.setFullYear(endDate.getFullYear() + 1);
+        }
+  
+        // Add the transaction to the user's transactions array
+        user.transactions.push({
+          amount: session.amount_total / 100, // Stripe sends amounts in cents
+          type,
+          endDate,
+        });
+  
+        await user.save();
+        console.log('Transaction saved successfully!');
+        return res.status(200).send('Transaction saved');
+      } catch (error) {
+        console.error('Error saving transaction:', error);
+        return res.status(500).send('Internal Server Error');
+      }
+    } else {
+      console.log(`Unhandled event type: ${event.type}`);
+      return res.status(400).send('Unhandled event type');
+    }
+  });
+      
+    
 
 app.listen(8080, () => {
   console.log('Server started on http://localhost:8080');

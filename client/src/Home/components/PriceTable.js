@@ -34,21 +34,24 @@ const tiers = [
 ]
 
 export default function PriceTable() {
-  const handleCheckout = async (priceId) => {
-    const stripe = await stripePromise
 
-    try {
-      const { data } = await axios.post('http://localhost:8080/create-checkout-session', {
-        priceId,
-      })
+const handleCheckout = async (priceId, type) => {
+  const stripe = await stripePromise;
 
-      // Redirect to Stripe checkout
-      await stripe.redirectToCheckout({ sessionId: data.id })
-    } catch (error) {
-      console.error('Error creating checkout session:', error)
-      alert('Something went wrong. Please try again.')
-    }
+  console.log(type)
+  try {
+    const { data } = await axios.post('http://localhost:8080/create-checkout-session',{
+      priceId,
+      type, // Send the subscription type (monthly/yearly)
+    },{withCredentials:true});
+
+    // Redirect to Stripe checkout
+    await stripe.redirectToCheckout({ sessionId: data.id });
+  } catch (error) {
+    console.error('Error creating checkout session:', error.message);
+    alert('Something went wrong. Please try again.');
   }
+};
 
   return (
     <div className="relative isolate bg-white px-6 py-24 sm:py-32 lg:px-8">
@@ -76,7 +79,7 @@ export default function PriceTable() {
               ))}
             </ul>
             <button
-              onClick={() => handleCheckout(tier.priceId)}
+              onClick={() => handleCheckout(tier.priceId,tier.priceMonthly)}
               className={`mt-8 block w-full rounded-md px-3.5 py-2.5 text-center text-sm font-semibold ${
                 tier.featured ? 'bg-indigo-500 text-white' : 'text-indigo-600 ring-1 ring-inset ring-indigo-200'
               }`}
