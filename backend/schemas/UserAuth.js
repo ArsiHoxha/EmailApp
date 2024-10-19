@@ -34,15 +34,10 @@ const userSchema = new mongoose.Schema({
     {
       date: { type: Date, default: Date.now },      // Transaction date
       amount: { type: Number, required: true },     // Transaction amount
-      status: { type: String, default: 'success' }, // Transaction status
-      type: {                                      // Transaction type: monthly/yearly
-        type: String, 
-        enum: ['monthly', 'yearly'], 
-        required: true
-      },
-      endDate: { type: Date, required: true }       // Subscription end date
+      status: { type: String, default: 'success' }  // Transaction status
     }
   ]
+  
 });
 
 // Export User Model

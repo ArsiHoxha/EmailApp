@@ -32,20 +32,35 @@ app.use(session({
   resave: false,
   saveUninitialized: true
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(bodyParser.json({
+  verify: (req, res, buf) => {
+    if (req.originalUrl.startsWith('/stripe/webhook')) {
+      req.rawBody = buf.toString(); // Store raw body as a string
+    }
+  }
+}));
 
 app.use(bodyParser.json()); // For regular API requests
 app.use(bodyParser.urlencoded({ extended: true })); // For form submissions
 
 const cors = require('cors');
-app.use(express.json()); // Make sure this line is present before defining any routes
 
 app.use(cors({
   origin: 'http://localhost:3000', // React app URL
+  methods: ['GET', 'POST'],
   credentials: true
 }));
-
+app.use(express.json({
+  verify: (req, res, buf) => {
+    if (req.originalUrl.startsWith('')) {
+      req.rawBody = buf.toString();
+    }
+  },
+   }));
+  
 // Passport Configuration
 passport.use(new GoogleStrategy({
   clientID: process.env.CLIENT_ID,
@@ -168,6 +183,7 @@ app.get('/auth/google/callback',
 );
 
 const isLoggedIn = (req, res, next) => {
+
   if (req.isAuthenticated()) {
     return next();
   }
@@ -727,10 +743,12 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
   // Start the server
   
 
-  app.post('/create-checkout-session',isLoggedIn, async (req, res) => {
-    const { priceId, type } = req.body; // Receive userId and subscription type from frontend
-    const userId = req.user._id.toString();
+  app.post('/create-checkout-session', isLoggedIn, async (req, res) => {
+    const { priceId } = req.body;
+    const userId = req.user._id.toString(); // Extract user ID from the logged-in user
+    console.log(userId)
     try {
+      // Create a new checkout session
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [
@@ -742,71 +760,83 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
         mode: 'subscription',
         success_url: 'http://localhost:3000/success',
         cancel_url: 'http://localhost:3000/cancel',
-        metadata: { userId, type }, // Pass userId and type as metadata
+        metadata: { userId:userId }, // Save userId in metadata
       });
   
+      // Send the session ID to the frontend
       res.json({ id: session.id });
     } catch (error) {
-      console.error('Error creating checkout session:', error);
-      res.status(500).json({ error: error.message });
+      console.error('Error creating checkout session:', error.message);
+      res.status(500).json({ error: 'Failed to create checkout session' });
     }
   });
-    
-  app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+        
+  app.post('/stripe/webhook', async (req, res) => {
     const sig = req.headers['stripe-signature'];
-  
-    // Log the raw body for debugging
-    console.log('Raw body:', req.body.toString()); // This should now print the actual raw JSON string
-  
     let event;
+  
     try {
-      // Construct the event from the raw body
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret); // Replace with your actual endpoint secret
+      // Verify the webhook signature
+      event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
     } catch (err) {
-      console.error('Webhook signature verification failed:', err.message);
+      console.error(`Webhook signature verification failed: ${err.message}`);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
   
-    // Handle the event type
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const { userId, type } = session.metadata;
+    // Handle the event
+    switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        console.log('Session data:', session); // Verify session object structure
   
-      try {
-        const user = await User.findById(userId);
-        if (!user) {
-          console.log('User not found');
-          return res.status(404).send('User not found');
+        // Extract userId from metadata
+        const userId = session.metadata.userId;
+        if (!userId) {
+          console.error('User ID missing from session metadata');
+          return res.status(400).send('User ID is required');
         }
   
-        // Calculate the subscription end date
-        const endDate = new Date();
-        if (type === 'monthly') {
-          endDate.setMonth(endDate.getMonth() + 1);
-        } else if (type === 'yearly') {
-          endDate.setFullYear(endDate.getFullYear() + 1);
+        try {
+          // Find the user by ID in MongoDB
+          const user = await User.findById(userId);
+          if (!user) {
+            console.error(`User not found for ID: ${userId}`);
+            return res.status(404).send('User not found');
+          }
+  
+          // Extract amount from the session (use amount_total for payment)
+          const amount = session.amount_total / 100; // Convert from cents to dollars
+          const status = session.payment_status; // Use session's payment status
+  
+          // Prepare transaction data
+          const transactionData = {
+            amount: amount,
+            status: status,
+            date: new Date(),
+          };
+  
+          // Add the transaction to the user's transactions
+          user.transactions.push(transactionData);
+  
+          // Save the updated user document
+          await user.save();
+          console.log('Transaction saved successfully:', transactionData);
+        } catch (error) {
+          console.error('Error finding user or saving transaction:', error.message);
+          return res.status(500).send('Error processing payment');
         }
+        break;
   
-        // Add the transaction to the user's transactions array
-        user.transactions.push({
-          amount: session.amount_total / 100, // Stripe sends amounts in cents
-          type,
-          endDate,
-        });
-  
-        await user.save();
-        console.log('Transaction saved successfully!');
-        return res.status(200).send('Transaction saved');
-      } catch (error) {
-        console.error('Error saving transaction:', error);
-        return res.status(500).send('Internal Server Error');
-      }
-    } else {
-      console.log(`Unhandled event type: ${event.type}`);
-      return res.status(400).send('Unhandled event type');
+      default:
+        console.warn(`Unhandled event type: ${event.type}`);
     }
-  });
-      
+  
+    // Acknowledge receipt of the event
+    res.json({ received: true });
+    });
+    
+  
+
     
 
 app.listen(8080, () => {
