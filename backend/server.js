@@ -60,7 +60,27 @@ app.use(express.json({
     }
   },
    }));
-  
+  // Middleware to check if user has a payment
+const checkPayment = async (req, res, next) => {
+  try {
+    const userId = req.user._id; // Assuming user is authenticated and user object is in req
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    if (user.transactions.length > 0) {
+      return res.status(400).send('You have already made a payment.');
+    }
+
+    next(); // Proceed if no payment is found
+  } catch (error) {
+    console.error('Error checking payment status:', error.message);
+    return res.status(500).send('Error checking payment status');
+  }
+};
+
 // Passport Configuration
 passport.use(new GoogleStrategy({
   clientID: process.env.CLIENT_ID,
@@ -289,6 +309,52 @@ app.post('/createListAndFetchEmails', isLoggedIn, async (req, res) => {
   } catch (error) {
     console.error('Error fetching emails:', error);
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+app.post('/fetchEmailsByDateRange', isLoggedIn, async (req, res) => {
+  try {
+      const { listName, startDate, endDate } = req.body;
+      const user = req.user;
+
+      if (!listName || !startDate || !endDate) {
+          return res.status(400).json({ error: 'List name, start date, and end date are required' });
+      }
+
+      const oauth2Client = new google.auth.OAuth2(
+          process.env.CLIENT_ID,
+          process.env.CLIENT_SECRET,
+          'http://localhost:8080/auth/google/callback'
+      );
+      oauth2Client.setCredentials({ refresh_token: user.refreshToken });
+
+      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+      // Format the start and end dates to RFC3339 format (YYYY-MM-DDTHH:MM:SSZ)
+      const formattedStartDate = new Date(startDate).toISOString();
+      const formattedEndDate = new Date(endDate).toISOString();
+
+      // Fetch emails that match the list name in the "From" header and are within the specified date range
+      const resEmails = await gmail.users.messages.list({
+          userId: 'me',
+          q: `from:${listName} after:${Math.floor(new Date(startDate).getTime() / 1000)} before:${Math.floor(new Date(endDate).getTime() / 1000)}`,
+          maxResults: 100 // Adjust the number of emails fetched
+      });
+
+      const messages = resEmails.data.messages || [];
+      const emailPromises = messages.map(async (message) => {
+          const msg = await gmail.users.messages.get({
+              userId: 'me',
+              id: message.id
+          });
+          return msg.data;
+      });
+
+      const emails = await Promise.all(emailPromises);
+
+      res.json({ emails });
+  } catch (error) {
+      console.error('Error fetching emails:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
@@ -804,11 +870,16 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
             return res.status(404).send('User not found');
           }
   
-          // Extract amount from the session (use amount_total for payment)
-          const amount = session.amount_total / 100; // Convert from cents to dollars
-          const status = session.payment_status; // Use session's payment status
+          // Check if the transactions array is empty
+          if (user.transactions.length > 0) {
+            console.warn('Payment already made.');
+            return res.status(400).send('You have already made a payment.');
+          }
   
-          // Prepare transaction data
+          // Prepare new transaction data
+          const amount = session.amount_total / 100; // Convert from cents to dollars
+          const status = session.payment_status;
+  
           const transactionData = {
             amount: amount,
             status: status,
@@ -833,7 +904,8 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
   
     // Acknowledge receipt of the event
     res.json({ received: true });
-    });
+  
+      });
     
   
 

@@ -34,7 +34,10 @@ const userSchema = new mongoose.Schema({
     {
       date: { type: Date, default: Date.now },      // Transaction date
       amount: { type: Number, required: true },     // Transaction amount
-      status: { type: String, default: 'success' }  // Transaction status
+      status: { type: String, default: 'success' },
+      paymentIntentId: String, // Add this field
+
+      // Transaction status
     }
   ]
   
