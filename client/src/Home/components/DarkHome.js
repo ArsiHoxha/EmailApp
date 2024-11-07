@@ -24,7 +24,7 @@ export default function DarkHome() {
     if (token) {
       // If token exists, verify the user with this token
       axios
-        .get('http://localhost:8080/auth/google/success', {
+        .get('http://localhost:5000/auth/google/success', {
           headers: {
             Authorization: `Bearer ${token}`, // Pass the token in the Authorization header
           },
@@ -42,7 +42,7 @@ export default function DarkHome() {
 
   const handleLogin = () => {
     // Open Google OAuth URL for login
-    const googleAuthURL = 'http://localhost:8080/auth/google';
+    const googleAuthURL = 'http://localhost:5000/auth/google';
     window.open(googleAuthURL, '_self');
   };
 
@@ -50,7 +50,7 @@ export default function DarkHome() {
   const handleGoogleAuthCallback = async (code) => {
     try {
       // After successful Google login, exchange the code for a token
-      const response = await axios.post('http://localhost:8080/auth/google/callback', { code });
+      const response = await axios.post('http://localhost:5000/auth/google/callback', { code });
 
       // Save the token to localStorage
       localStorage.setItem('token', response.data.token);

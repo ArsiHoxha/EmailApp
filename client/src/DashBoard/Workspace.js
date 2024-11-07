@@ -30,7 +30,7 @@ export default function Workspace() {
           return;
         }
 
-        const response = await axios.get('http://localhost:8080/api/workspaces', {
+        const response = await axios.get('http://localhost:5000/api/workspaces', {
           headers: {
             Authorization: `Bearer ${token}` // Attach token to request
           }
@@ -74,7 +74,7 @@ export default function Workspace() {
       }
 
       const response = await axios.post(
-        'http://localhost:8080/api/workspaces',
+        'http://localhost:5000/api/workspaces',
         { name: workspaceName, backgroundImage: selectedImage },
         {
           headers: {
@@ -108,7 +108,7 @@ export default function Workspace() {
       }
 
       const response = await axios.post(
-        'http://localhost:8080/api/workspaces/delete',
+        'http://localhost:5000/api/workspaces/delete',
         { workspaceId },
         {
           headers: {
