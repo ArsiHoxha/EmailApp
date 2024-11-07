@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-// Import the delete icon from React Icons (FontAwesome)
 import { FaTrash } from 'react-icons/fa';
 
 export default function Workspace() {
@@ -11,7 +10,6 @@ export default function Workspace() {
   const [error, setError] = useState('');
   const [workspaces, setWorkspaces] = useState([]);
   
-  // Predefined images to choose from
   const images = [
     "https://images.unsplash.com/photo-1444580442178-56153ed65706?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     "https://plus.unsplash.com/premium_photo-1661964177687-57387c2cbd14?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
@@ -24,20 +22,30 @@ export default function Workspace() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch workspaces when the component mounts
     const fetchWorkspaces = async () => {
       try {
-        const response = await axios.get('http://localhost:8080/api/workspaces', { withCredentials: true });
+        const token = localStorage.getItem('token'); // Get token from localStorage
+        if (!token) {
+          navigate('/'); // Redirect if token is missing
+          return;
+        }
+
+        const response = await axios.get('http://localhost:8080/api/workspaces', {
+          headers: {
+            Authorization: `Bearer ${token}` // Attach token to request
+          }
+        });
+
         setWorkspaces(response.data);
       } catch (err) {
-        navigate('/')
+        navigate('/');
         console.error('Failed to load workspaces:', err);
         setError('Failed to load workspaces. Please try again later.');
       }
     };
 
     fetchWorkspaces();
-  }, []);
+  }, [navigate]);
 
   const openPopup = () => {
     setIsPopupOpen(true);
@@ -45,9 +53,9 @@ export default function Workspace() {
 
   const closePopup = () => {
     setIsPopupOpen(false);
-    setWorkspaceName(''); // Reset input field
-    setSelectedImage(''); // Reset selected image
-    setError(''); // Clear any previous errors
+    setWorkspaceName('');
+    setSelectedImage('');
+    setError('');
   };
 
   const createWorkspace = async (e) => {
@@ -59,13 +67,24 @@ export default function Workspace() {
     }
 
     try {
-      const response = await axios.post('http://localhost:8080/api/workspaces', {
-        name: workspaceName,
-        backgroundImage: selectedImage,
-      }, { withCredentials: true });
+      const token = localStorage.getItem('token'); // Get token from localStorage
+      if (!token) {
+        navigate('/'); // Redirect if token is missing
+        return;
+      }
 
-      setWorkspaces([...workspaces, response.data]); // Add the new workspace to the list
-      closePopup(); // Close the popup after creating the workspace
+      const response = await axios.post(
+        'http://localhost:8080/api/workspaces',
+        { name: workspaceName, backgroundImage: selectedImage },
+        {
+          headers: {
+            Authorization: `Bearer ${token}` // Attach token to request
+          }
+        }
+      );
+
+      setWorkspaces([...workspaces, response.data]);
+      closePopup();
     } catch (err) {
       setError('Failed to create workspace. Please try again.');
       console.error('Failed to create workspace:', err);
@@ -82,67 +101,73 @@ export default function Workspace() {
 
   const handleDeleteWorkspace = async (workspaceId) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/workspaces/delete', {
-        workspaceId,
-      },{withCredentials:true});
-  
-      alert(response.data.message); // "Workspace deleted successfully"
+      const token = localStorage.getItem('token'); // Get token from localStorage
+      if (!token) {
+        navigate('/'); // Redirect if token is missing
+        return;
+      }
 
-      // Refresh the page
+      const response = await axios.post(
+        'http://localhost:8080/api/workspaces/delete',
+        { workspaceId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}` // Attach token to request
+          }
+        }
+      );
+
+      alert(response.data.message); // "Workspace deleted successfully"
       window.location.reload();
-      } catch (error) {
+    } catch (error) {
       if (error.response) {
-        console.error('Error:', error.response.data.message); // Handle server response errors
+        console.error('Error:', error.response.data.message);
       } else {
-        console.error('Error:', error.message); // Handle network or other errors
+        console.error('Error:', error.message);
       }
     }
-  
   };
   
   return (
     <div className="flex flex-col items-center h-screen ">
       <div className="text-center font-black text-3xl p-5">Workspaces</div>
-      <div className="text-center pb-10">Effortlessly manage your projects and emails in a personalized space designed to keep you organized and focused 🔥🔥🔥</div>
+      <div className="text-center pb-10">
+        Effortlessly manage your projects and emails in a personalized space designed to keep you organized and focused 🔥🔥🔥
+      </div>
 
-      {/* Display the list of workspaces */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         {workspaces.map((workspace) => (
           <div
             key={workspace._id}
             className="relative border rounded-lg overflow-hidden h-48 group"
           >
-            {/* Click on the workspace image */}
             <img
-              src={workspace.imageUrl || images[0]} // Default to a predefined image if none is available
+              src={workspace.imageUrl || images[0]}
               alt={`Workspace ${workspace.name}`}
               className="w-full h-full object-cover rounded-lg cursor-pointer"
               onClick={() => handleWorkspaceClick(workspace.name)}
             />
 
-            {/* Workspace name */}
             <div
               className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center hover:opacity-50 transition-opacity duration-300"
-              onClick={() => handleWorkspaceClick(workspace.name)} // Ensure clicking on the name also navigates
+              onClick={() => handleWorkspaceClick(workspace.name)}
             >
               <h3 className="text-xl font-semibold text-white">{workspace.name}</h3>
             </div>
 
-            {/* Delete icon - needs a higher z-index so it's clickable */}
             <div className="absolute top-2 right-2 z-10">
               <FaTrash
                 className="text-white bg-red-500 rounded-full p-2 hover:bg-red-600 cursor-pointer"
                 size={24}
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevent the click from triggering the workspace click
-                  handleDeleteWorkspace(workspace.name);
+                  e.stopPropagation();
+                  handleDeleteWorkspace(workspace._id);
                 }}
               />
             </div>
           </div>
         ))}
 
-        {/* Button to create a new workspace */}
         <button
           className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
           onClick={openPopup}
