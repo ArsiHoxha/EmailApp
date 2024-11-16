@@ -85,7 +85,7 @@ const checkPayment = async (req, res, next) => {
 passport.use(new GoogleStrategy({
   clientID: process.env.CLIENT_ID,
   clientSecret: process.env.CLIENT_SECRET,
-  callbackURL: "http://localhost:8080/auth/google/callback",
+  callbackURL: "http://localhost:5000/auth/google/callback",
   passReqToCallback: true
 },
 async (request, accessToken, refreshToken, profile, done) => {
@@ -231,7 +231,7 @@ app.get('/getEmails', isLoggedIn, async (req, res) => {
     const oauth2Client = new google.auth.OAuth2(
       process.env.CLIENT_ID,
       process.env.CLIENT_SECRET,
-      'http://localhost:8080/auth/google/callback'
+      'http://localhost:5000/auth/google/callback'
     );
     oauth2Client.setCredentials({ refresh_token: user.refreshToken });
 
@@ -284,7 +284,7 @@ app.post('/createListAndFetchEmails', isLoggedIn, async (req, res) => {
     const oauth2Client = new google.auth.OAuth2(
       process.env.CLIENT_ID,
       process.env.CLIENT_SECRET,
-      'http://localhost:8080/auth/google/callback'
+      'http://localhost:5000/auth/google/callback'
     );
     oauth2Client.setCredentials({ refresh_token: user.refreshToken });
 
@@ -338,7 +338,7 @@ app.post('/fetchEmailsByDateRange', isLoggedIn, async (req, res) => {
       const oauth2Client = new google.auth.OAuth2(
           process.env.CLIENT_ID,
           process.env.CLIENT_SECRET,
-          'http://localhost:8080/auth/google/callback'
+          'http://localhost:5000/auth/google/callback'
       );
       oauth2Client.setCredentials({ refresh_token: user.refreshToken });
 
@@ -640,7 +640,7 @@ app.post('/api/workspaces/:workspaceName/:listName', isLoggedIn, async (req, res
     const oauth2Client = new google.auth.OAuth2(
       process.env.CLIENT_ID,
       process.env.CLIENT_SECRET,
-      'http://localhost:8080/auth/google/callback'
+      'http://localhost:5000/auth/google/callback'
     );
     oauth2Client.setCredentials({ refresh_token: user.refreshToken });
 
@@ -716,7 +716,7 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
     const oauth2Client = new google.auth.OAuth2(
       process.env.CLIENT_ID,
       process.env.CLIENT_SECRET,
-      'http://localhost:8080/auth/google/callback'
+      'http://localhost:5000/auth/google/callback'
     );
     oauth2Client.setCredentials({ refresh_token: user.refreshToken });
 
@@ -926,6 +926,6 @@ app.get('/api/workspaces/:workspaceName/emails', isLoggedIn, async (req, res) =>
 
     
 
-app.listen(8080, () => {
-  console.log('Server started on http://localhost:8080');
+app.listen(5000, () => {
+  console.log('Server started on http://localhost:5000');
 });

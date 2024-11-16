@@ -22,8 +22,8 @@ export default function PersDashboard() {
     const fetchWorkspaceAndEmails = async () => {
       try {
         setLoading(true);
-        const workspaceResponse = await axios.get(`http://localhost:8080/api/workspaces/${name}`, { withCredentials: true });
-        const emailsResponse = await axios.get(`http://localhost:8080/api/workspaces/${name}/emails`, { withCredentials: true });
+        const workspaceResponse = await axios.get(`http://localhost:5000/api/workspaces/${name}`, { withCredentials: true });
+        const emailsResponse = await axios.get(`http://localhost:5000/api/workspaces/${name}/emails`, { withCredentials: true });
 
         const updatedWorkspace = {
           ...workspaceResponse.data,
@@ -52,7 +52,7 @@ export default function PersDashboard() {
 
     try {
       const response = await axios.post(
-        `http://localhost:8080/api/workspaces/${name}/${newListName}`,
+        `http://localhost:5000/api/workspaces/${name}/${newListName}`,
         { workspaceName: name, listName: newListName },
         { withCredentials: true }
       );
@@ -97,7 +97,7 @@ export default function PersDashboard() {
 
     try {
       const response = await axios.post(
-        'http://localhost:8080/api/extract-main-clause',
+        'http://localhost:5000/api/extract-main-clause',
         { text: selectedEmail.body },
         { withCredentials: true }
       );

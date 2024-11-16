@@ -38,7 +38,7 @@ export default function PriceTable() {
 
     try {
       const { data } = await axios.post(
-        'http://localhost:8080/create-checkout-session',
+        'http://localhost:5000/create-checkout-session',
         { priceId },
         { withCredentials: true }
       );
@@ -55,7 +55,7 @@ export default function PriceTable() {
     try {
       // Handle logic for free plan signup
       const response = await axios.post(
-        'http://localhost:8080/signup-free-plan',
+        'http://localhost:5000/signup-free-plan',
         {},
         { withCredentials: true }
       );

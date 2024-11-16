@@ -26,7 +26,7 @@ export default function Navbar() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await axios.get('http://localhost:8080/getProfileImage', {
+        const res = await axios.get('http://localhost:5000/getProfileImage', {
           withCredentials: true // To ensure cookies (session data) are included if needed
         });
         setUser(res.data);

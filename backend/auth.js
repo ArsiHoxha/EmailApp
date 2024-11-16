@@ -5,7 +5,7 @@ passport.use(
     {
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
-      callbackURL: "http://localhost:8080/auth/google/callback",
+      callbackURL: "http://localhost:5000/auth/google/callback",
       passReqToCallback: true,
       accessType: 'offline', // Request offline access to get a refresh token
       prompt: 'consent', // Prompt the user to grant permission again, ensuring refresh token is provided
